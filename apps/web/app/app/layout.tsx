@@ -1,10 +1,15 @@
-"use client"
+"use client";
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { createTRPCClient, httpBatchLink, httpSubscriptionLink, splitLink } from '@trpc/client';
-import { useState } from 'react';
-import { TRPCProvider } from '../../trpc';
-import type { AppRouter } from '../../../api/router';
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  createTRPCClient,
+  httpBatchLink,
+  httpSubscriptionLink,
+  splitLink,
+} from "@trpc/client";
+import { useState } from "react";
+import { TRPCProvider } from "../../trpc";
+import type { AppRouter } from "../../../api/router";
 
 function makeQueryClient() {
   return new QueryClient({
@@ -19,7 +24,7 @@ function makeQueryClient() {
 }
 let browserQueryClient: QueryClient | undefined = undefined;
 function getQueryClient() {
-  if (typeof window === 'undefined') {
+  if (typeof window === "undefined") {
     // Server: always make a new query client
     return makeQueryClient();
   } else {
@@ -38,16 +43,16 @@ export default function App({ children }: { children: React.ReactNode }) {
       links: [
         splitLink({
           // uses the httpSubscriptionLink for subscriptions
-          condition: (op) => op.type === 'subscription',
+          condition: (op) => op.type === "subscription",
           true: httpSubscriptionLink({
             url: `http://localhost:3001`,
           }),
           false: httpBatchLink({
             url: `http://localhost:3001`,
-          })
-        })
+          }),
+        }),
       ],
-    }),
+    })
   );
   return (
     <QueryClientProvider client={queryClient}>

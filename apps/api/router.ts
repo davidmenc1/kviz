@@ -1,16 +1,16 @@
-import { router } from './trpc';
-import { publicProcedure } from './trpc';
-import { EventEmitter, on } from 'events';
+import { router } from "./trpc";
+import { publicProcedure } from "./trpc";
+import { EventEmitter, on } from "events";
 
 const ee = new EventEmitter();
 
 export const appRouter = router({
   hello: publicProcedure.query(() => {
-    ee.emit("ping")
+    ee.emit("ping");
     return "Hello, world!";
   }),
   ping: publicProcedure.subscription(async function* (opts) {
-    for await (const [data] of on(ee, 'ping', {
+    for await (const [data] of on(ee, "ping", {
       // Passing the AbortSignal from the request automatically cancels the event emitter when the request is aborted
       signal: opts.signal,
     })) {
