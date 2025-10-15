@@ -3,6 +3,7 @@ import { appRouter } from "./router";
 
 Bun.serve({
     port: 3001,
+    idleTimeout: 255, // hour
     async fetch(req) {
         const res = await fetchRequestHandler({
             endpoint: '/',
