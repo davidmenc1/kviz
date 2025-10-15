@@ -1,0 +1,19 @@
+{
+  "name": "api",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun run --watch index.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@trpc/server": "^11.6.0",
+    "zod": "^4.1.12"
+  }
+}
