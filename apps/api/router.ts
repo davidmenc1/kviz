@@ -1,22 +1,18 @@
 import { router } from "./trpc";
-import { publicProcedure } from "./trpc";
-import { EventEmitter, on } from "events";
-
-const ee = new EventEmitter();
+import { quizRouter } from "./routers/quizRouter";
+import { gameRouter } from "./routers/gameRouter";
+import { questionRouter } from "./routers/questionRouter";
+import { optionRouter } from "./routers/optionRouter";
+import { teamRouter } from "./routers/teamRouter";
+import { answerRouter } from "./routers/answerRouter";
 
 export const appRouter = router({
-  hello: publicProcedure.query(() => {
-    ee.emit("ping");
-    return "Hello, world!";
-  }),
-  ping: publicProcedure.subscription(async function* (opts) {
-    for await (const [data] of on(ee, "ping", {
-      // Passing the AbortSignal from the request automatically cancels the event emitter when the request is aborted
-      signal: opts.signal,
-    })) {
-      yield "pong"; // implementovat tracked https://trpc.io/docs/server/subscriptions#tracked
-    }
-  }),
+  quiz: quizRouter,
+  game: gameRouter,
+  question: questionRouter,
+  option: optionRouter,
+  team: teamRouter,
+  answer: answerRouter,
 });
 
 export type AppRouter = typeof appRouter;

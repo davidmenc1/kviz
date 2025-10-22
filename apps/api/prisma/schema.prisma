@@ -12,37 +12,61 @@ model Quiz {
   name        String
   description String?
   questions   Question[]
-  teams       Team[]       
-  scores      Score[]     //celkový výsledek všech týmů v kvízu
   createdAt   DateTime    @default(now())
+  games       Game[]
+}
+
+model Game {
+  id        Int       @id @default(autoincrement())
+  quizId    Int
+  quiz      Quiz      @relation(fields: [quizId], references: [id])
+  teamId    Int
+  team      Team      @relation(fields: [teamId], references: [id])
+  createdAt DateTime  @default(now())
+
+  answers   Answer[]   
 }
 
 model Question {
-  id           Int      @id @default(autoincrement())
+  id           Int       @id @default(autoincrement())
   quizId       Int
-  quiz         Quiz     @relation(fields: [quizId], references: [id])
+  order        Int
+  quiz         Quiz      @relation(fields: [quizId], references: [id])
   text         String
-  options      String[]
-  correctIndex Int?
+  options      Option[]  
+  answers      Answer[]  
+}
+
+model Option {
+  id          Int       @id @default(autoincrement())
+  questionId  Int
+  question    Question  @relation(fields: [questionId], references: [id])
+  text        String
+  isCorrect   Boolean   
+  answers     Answer[]  
 }
 
 model Team {
-  id        Int       @id @default(autoincrement())
+  id        Int        @id @default(autoincrement())
   name      String
-  quizId    Int       
-  quiz      Quiz       @relation(fields: [quizId], references: [id])
-  scores    Score[]   //skóre týmu
-  createdAt DateTime  @default(now())
+  quizId    Int         
+  games     Game[]      
+  answers   Answer[]    
+  createdAt DateTime    @default(now())
 }
 
-model Score {
-  id        Int       @id @default(autoincrement())
-  teamId    Int
-  quizId    Int
-  score     Int
-  team      Team      @relation(fields: [teamId], references: [id])
-  quiz      Quiz      @relation(fields: [quizId], references: [id])
-  createdAt DateTime  @default(now())
+model Answer {
+  id          Int        @id @default(autoincrement())
+  teamId      Int
+  team        Team       @relation(fields: [teamId], references: [id])
+  gameId      Int
+  game        Game       @relation(fields: [gameId], references: [id])
+  questionId  Int
+  question    Question   @relation(fields: [questionId], references: [id])
+  optionId    Int?
+  option      Option?    @relation(fields: [optionId], references: [id])
+  customText  String?    
+  createdAt   DateTime   @default(now())
 
-  @@unique([teamId, quizId]) 
+  @@unique([teamId, questionId, gameId]) 
 }
