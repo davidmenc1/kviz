@@ -7,9 +7,10 @@ import {
   httpSubscriptionLink,
   splitLink,
 } from "@trpc/client";
-import { useState } from "react";
+import { useMemo } from "react";
 import { TRPCProvider } from "../../trpc";
 import type { AppRouter } from "../../../api/router";
+import { AuthProvider, useAuth } from "../../contexts/auth";
 
 function makeQueryClient() {
   return new QueryClient({
@@ -36,29 +37,48 @@ function getQueryClient() {
     return browserQueryClient;
   }
 }
-export default function App({ children }: { children: React.ReactNode }) {
+function TRPCClientProvider({ children }: { children: React.ReactNode }) {
   const queryClient = getQueryClient();
-  const [trpcClient] = useState(() =>
-    createTRPCClient<AppRouter>({
-      links: [
-        splitLink({
-          // uses the httpSubscriptionLink for subscriptions
-          condition: (op) => op.type === "subscription",
-          true: httpSubscriptionLink({
-            url: `http://localhost:3001`,
+  const { sessionId } = useAuth();
+
+  const trpcClient = useMemo(
+    () =>
+      createTRPCClient<AppRouter>({
+        links: [
+          splitLink({
+            // uses the httpSubscriptionLink for subscriptions
+            condition: (op) => op.type === "subscription",
+            true: httpSubscriptionLink({
+              url: `http://localhost:3001`,
+            }),
+            false: httpBatchLink({
+              url: `http://localhost:3001`,
+              headers: () => {
+                if (!sessionId) return {};
+                return {
+                  Authorization: `Bearer ${sessionId}`,
+                };
+              },
+            }),
           }),
-          false: httpBatchLink({
-            url: `http://localhost:3001`,
-          }),
-        }),
-      ],
-    })
+        ],
+      }),
+    [sessionId]
   );
+
   return (
     <QueryClientProvider client={queryClient}>
       <TRPCProvider trpcClient={trpcClient} queryClient={queryClient}>
         {children}
       </TRPCProvider>
     </QueryClientProvider>
+  );
+}
+
+export default function App({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthProvider>
+      <TRPCClientProvider>{children}</TRPCClientProvider>
+    </AuthProvider>
   );
 }

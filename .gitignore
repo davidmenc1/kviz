@@ -38,3 +38,4 @@ yarn-error.log*
 *.pem
 
 /generated/prisma
+apps/api/prisma/dev.db

@@ -1,6 +1,10 @@
 import { router } from "./trpc";
 import { publicProcedure } from "./trpc";
 import { EventEmitter, on } from "events";
+import { adminRoutes } from "./routes/admin";
+import { questionRoutes } from "./routes/question";
+import { quizRoutes } from "./routes/quiz";
+import { gameRoutes } from "./routes/game";
 
 const ee = new EventEmitter();
 
@@ -17,6 +21,10 @@ export const appRouter = router({
       yield "pong"; // implementovat tracked https://trpc.io/docs/server/subscriptions#tracked
     }
   }),
+  admin: adminRoutes,
+  quiz: quizRoutes,
+  question: questionRoutes,
+  game: gameRoutes,
 });
 
 export type AppRouter = typeof appRouter;

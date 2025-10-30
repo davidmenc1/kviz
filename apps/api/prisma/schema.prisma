@@ -3,46 +3,54 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
 model Quiz {
-  id          Int         @id @default(autoincrement())
+  id          String     @id
   name        String
   description String?
   questions   Question[]
-  teams       Team[]       
-  scores      Score[]     //celkový výsledek všech týmů v kvízu
-  createdAt   DateTime    @default(now())
+  createdAt   DateTime   @default(now())
 }
 
 model Question {
-  id           Int      @id @default(autoincrement())
-  quizId       Int
-  quiz         Quiz     @relation(fields: [quizId], references: [id])
-  text         String
-  options      String[]
-  correctIndex Int?
+  id      String   @id
+  quizId  String
+  order   Int
+  quiz    Quiz     @relation(fields: [quizId], references: [id])
+  text    String
+  options Option[]
 }
 
-model Team {
-  id        Int       @id @default(autoincrement())
-  name      String
-  quizId    Int       
-  quiz      Quiz       @relation(fields: [quizId], references: [id])
-  scores    Score[]   //skóre týmu
-  createdAt DateTime  @default(now())
+model Option {
+  id         String   @id
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id])
+  text       String
+  isCorrect  Boolean
 }
 
-model Score {
-  id        Int       @id @default(autoincrement())
-  teamId    Int
-  quizId    Int
-  score     Int
-  team      Team      @relation(fields: [teamId], references: [id])
-  quiz      Quiz      @relation(fields: [quizId], references: [id])
+model Admin {
+  id        String    @id
+  username  String    @unique
+  password  String
   createdAt DateTime  @default(now())
+  sessions  Session[]
+}
 
-  @@unique([teamId, quizId]) 
+model Session {
+  id        String   @id
+  adminId   String
+  admin     Admin    @relation(fields: [adminId], references: [id])
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+}
+
+model InviteCode {
+  id        String   @id
+  code      String   @unique
+  createdAt DateTime @default(now())
+  expiresAt DateTime
 }

@@ -13,7 +13,9 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@google/genai": "^1.28.0",
     "@trpc/server": "^11.6.0",
+    "nanoid": "^5.1.6",
     "zod": "^4.1.12"
   }
 }
