@@ -12,6 +12,7 @@ export function AdminNav() {
     { href: "/app/admin/quizzes", label: "Quizzes" },
     { href: "/app/admin/games", label: "Games" },
     { href: "/app/admin/ai", label: "AI Generator" },
+    { href: "/app/admin/invites", label: "Invites" },
   ];
 
   return (

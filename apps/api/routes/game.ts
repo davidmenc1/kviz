@@ -84,6 +84,31 @@ export const gameRoutes = router({
           message: "Game not found",
         });
       }
+
+      // Get current question if there's an active question
+      let currentQuestion = null;
+      if (
+        game.questionNumber > 0 &&
+        (game.state === "questioning" || game.state === "results")
+      ) {
+        const question = await prisma.question.findFirst({
+          where: { quizId: game.quizId, order: game.questionNumber },
+          include: { options: true },
+        });
+        if (question) {
+          currentQuestion = {
+            id: question.id,
+            text: question.text,
+            order: question.order,
+            options: question.options.map((option) => ({
+              id: option.id,
+              text: option.text,
+              isCorrect: option.isCorrect,
+            })),
+          };
+        }
+      }
+
       return {
         id: game.id,
         name: game.name,
@@ -91,6 +116,7 @@ export const gameRoutes = router({
         questionNumber: game.questionNumber,
         state: game.state,
         code: game.code,
+        currentQuestion,
         teams: game.teams.map((team) => ({
           id: team.id,
           name: team.name,
@@ -114,11 +140,37 @@ export const gameRoutes = router({
           message: "Game not found",
         });
       }
+
+      // Get current question if there's an active question
+      let currentQuestion = null;
+      if (
+        game.questionNumber > 0 &&
+        (game.state === "questioning" || game.state === "results")
+      ) {
+        const question = await prisma.question.findFirst({
+          where: { quizId: game.quizId, order: game.questionNumber },
+          include: { options: true },
+        });
+        if (question) {
+          currentQuestion = {
+            id: question.id,
+            text: question.text,
+            order: question.order,
+            options: question.options.map((option) => ({
+              id: option.id,
+              text: option.text,
+              isCorrect: option.isCorrect,
+            })),
+          };
+        }
+      }
+
       return {
         id: game.id,
         name: game.name,
         state: game.state,
         code: game.code,
+        currentQuestion,
         teams: game.teams.map((team) => ({
           id: team.id,
           name: team.name,
@@ -129,10 +181,19 @@ export const gameRoutes = router({
   createGame: adminProcedure
     .input(z.object({ name: z.string(), quizId: z.string() }))
     .mutation(async ({ input }) => {
-      // create a 8 letter code
-      const code =
-        Math.random().toString(36).substring(2, 15) +
-        Math.random().toString(36).substring(2, 15);
+      // create a 4-digit code
+      let code: string;
+      let attempts = 0;
+      do {
+        code = Math.floor(1000 + Math.random() * 9000).toString();
+        attempts++;
+        if (attempts > 100) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to generate unique game code",
+          });
+        }
+      } while (Array.from(games.values()).some((g) => g.code === code));
       const game = {
         id: nanoid(),
         name: input.name,
@@ -252,6 +313,24 @@ export const gameRoutes = router({
     .input(z.object({ gameId: z.string(), playerId: z.string() }))
     .subscription(async function* (opts) {
       const game = games.get(opts.input.gameId);
+      if (!game) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Game not found",
+        });
+      }
+      for await (const [data] of on(game.ee, "data", {
+        signal: opts.signal,
+      })) {
+        yield data satisfies EventData;
+      }
+    }),
+  gameEventsByCode: publicProcedure
+    .input(z.object({ code: z.string() }))
+    .subscription(async function* (opts) {
+      const game = Array.from(games.values()).find(
+        (g) => g.code === opts.input.code
+      );
       if (!game) {
         throw new TRPCError({
           code: "NOT_FOUND",

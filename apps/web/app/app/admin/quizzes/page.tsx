@@ -5,7 +5,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -28,7 +34,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
 export default function QuizzesPage() {
@@ -36,12 +49,22 @@ export default function QuizzesPage() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [editingQuiz, setEditingQuiz] = useState<{ id: string; name: string; description: string } | null>(null);
+  const [editingQuiz, setEditingQuiz] = useState<{
+    id: string;
+    name: string;
+    description: string;
+  } | null>(null);
 
   const quizzesQuery = useQuery(trpc.quiz.getQuizzes.queryOptions());
-  const createQuizMutation = useMutation(trpc.quiz.createQuiz.mutationOptions());
-  const updateQuizMutation = useMutation(trpc.quiz.updateQuiz.mutationOptions());
-  const deleteQuizMutation = useMutation(trpc.quiz.deleteQuiz.mutationOptions());
+  const createQuizMutation = useMutation(
+    trpc.quiz.createQuiz.mutationOptions()
+  );
+  const updateQuizMutation = useMutation(
+    trpc.quiz.updateQuiz.mutationOptions()
+  );
+  const deleteQuizMutation = useMutation(
+    trpc.quiz.deleteQuiz.mutationOptions()
+  );
 
   const handleCreateQuiz = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -54,7 +77,6 @@ export default function QuizzesPage() {
         queryKey: trpc.quiz.getQuizzes.queryKey(),
       });
       setShowCreateDialog(false);
-      e.currentTarget.reset();
     } catch (err) {
       console.error("Create quiz error:", err);
     }
@@ -97,7 +119,11 @@ export default function QuizzesPage() {
   }
 
   if (quizzesQuery.error) {
-    return <div className="text-destructive">Error: {quizzesQuery.error.message}</div>;
+    return (
+      <div className="text-destructive">
+        Error: {quizzesQuery.error.message}
+      </div>
+    );
   }
 
   return (
@@ -167,7 +193,11 @@ export default function QuizzesPage() {
             </TableHeader>
             <TableBody>
               {quizzesQuery.data?.map((quiz) => (
-                <TableRow key={quiz.id} className="cursor-pointer" onClick={() => router.push(`/app/admin/quizzes/${quiz.id}`)}>
+                <TableRow
+                  key={quiz.id}
+                  className="cursor-pointer"
+                  onClick={() => router.push(`/app/admin/quizzes/${quiz.id}`)}
+                >
                   <TableCell className="font-medium">{quiz.name}</TableCell>
                   <TableCell>
                     <p className="text-sm text-muted-foreground line-clamp-2">
@@ -192,7 +222,11 @@ export default function QuizzesPage() {
                         }
                       >
                         <DialogTrigger asChild>
-                          <Button variant="outline" size="sm" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             Edit
                           </Button>
                         </DialogTrigger>
@@ -203,7 +237,10 @@ export default function QuizzesPage() {
                               Update quiz information
                             </DialogDescription>
                           </DialogHeader>
-                          <form onSubmit={handleUpdateQuiz} className="space-y-4">
+                          <form
+                            onSubmit={handleUpdateQuiz}
+                            className="space-y-4"
+                          >
                             <div className="space-y-2">
                               <Label htmlFor="edit-name">Quiz Name</Label>
                               <Input
@@ -214,7 +251,9 @@ export default function QuizzesPage() {
                               />
                             </div>
                             <div className="space-y-2">
-                              <Label htmlFor="edit-description">Description</Label>
+                              <Label htmlFor="edit-description">
+                                Description
+                              </Label>
                               <Textarea
                                 id="edit-description"
                                 name="description"
@@ -234,7 +273,9 @@ export default function QuizzesPage() {
                                 type="submit"
                                 disabled={updateQuizMutation.isPending}
                               >
-                                {updateQuizMutation.isPending ? "Saving..." : "Save"}
+                                {updateQuizMutation.isPending
+                                  ? "Saving..."
+                                  : "Save"}
                               </Button>
                             </div>
                           </form>
@@ -254,8 +295,8 @@ export default function QuizzesPage() {
                           <AlertDialogHeader>
                             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                             <AlertDialogDescription>
-                              This action cannot be undone. This will permanently
-                              delete the quiz and all its questions.
+                              This action cannot be undone. This will
+                              permanently delete the quiz and all its questions.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
@@ -280,4 +321,3 @@ export default function QuizzesPage() {
     </div>
   );
 }
-

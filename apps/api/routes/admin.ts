@@ -130,4 +130,61 @@ export const adminRoutes = router({
 
     return { success: true };
   }),
+  createInviteCode: adminProcedure
+    .input(
+      z.object({
+        expiresInDays: z.number().min(1).max(365).default(30),
+      })
+    )
+    .mutation(async ({ input }) => {
+      // Generate a unique 8-character code
+      let code: string;
+      let existingCode;
+      let attempts = 0;
+      
+      do {
+        code = Math.random().toString(36).substring(2, 10).toUpperCase();
+        existingCode = await prisma.inviteCode.findUnique({
+          where: { code },
+        });
+        attempts++;
+        if (attempts > 10) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to generate unique invite code",
+          });
+        }
+      } while (existingCode);
+
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + input.expiresInDays);
+
+      const inviteCode = await prisma.inviteCode.create({
+        data: {
+          id: nanoid(),
+          code,
+          expiresAt,
+        },
+      });
+
+      return inviteCode;
+    }),
+  getInviteCodes: adminProcedure.query(async () => {
+    const inviteCodes = await prisma.inviteCode.findMany({
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return inviteCodes;
+  }),
+  deleteInviteCode: adminProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ input }) => {
+      await prisma.inviteCode.delete({
+        where: { id: input.id },
+      });
+
+      return { success: true };
+    }),
 });

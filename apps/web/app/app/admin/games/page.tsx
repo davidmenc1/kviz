@@ -5,7 +5,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -23,7 +29,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
 export default function GamesPage() {
@@ -35,7 +48,9 @@ export default function GamesPage() {
 
   const gamesQuery = useQuery(trpc.game.getGames.queryOptions());
   const quizzesQuery = useQuery(trpc.quiz.getQuizzes.queryOptions());
-  const createGameMutation = useMutation(trpc.game.createGame.mutationOptions());
+  const createGameMutation = useMutation(
+    trpc.game.createGame.mutationOptions()
+  );
 
   const handleCreateGame = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -51,19 +66,21 @@ export default function GamesPage() {
       });
       setShowCreateDialog(false);
       setSelectedQuizId("");
-      e.currentTarget.reset();
     } catch (err) {
       console.error("Create game error:", err);
     }
   };
 
   const getStateBadge = (state: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+    const variants: Record<
+      string,
+      "default" | "secondary" | "destructive" | "outline"
+    > = {
       "not-started": "secondary",
-      "started": "default",
-      "questioning": "default",
-      "results": "outline",
-      "ended": "destructive",
+      started: "default",
+      questioning: "default",
+      results: "outline",
+      ended: "destructive",
     };
     return (
       <Badge variant={variants[state] || "secondary"}>
@@ -77,7 +94,9 @@ export default function GamesPage() {
   }
 
   if (gamesQuery.error) {
-    return <div className="text-destructive">Error: {gamesQuery.error.message}</div>;
+    return (
+      <div className="text-destructive">Error: {gamesQuery.error.message}</div>
+    );
   }
 
   return (
@@ -107,7 +126,11 @@ export default function GamesPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="quizId">Quiz</Label>
-                <Select value={selectedQuizId} onValueChange={setSelectedQuizId} required>
+                <Select
+                  value={selectedQuizId}
+                  onValueChange={setSelectedQuizId}
+                  required
+                >
                   <SelectTrigger id="quizId">
                     <SelectValue placeholder="Select a quiz" />
                   </SelectTrigger>
@@ -161,7 +184,11 @@ export default function GamesPage() {
             </TableHeader>
             <TableBody>
               {gamesQuery.data?.map((game) => (
-                <TableRow key={game.id} className="cursor-pointer" onClick={() => router.push(`/app/admin/games/${game.id}`)}>
+                <TableRow
+                  key={game.id}
+                  className="cursor-pointer"
+                  onClick={() => router.push(`/app/admin/games/${game.id}`)}
+                >
                   <TableCell className="font-medium">{game.name}</TableCell>
                   <TableCell>
                     <code className="px-2 py-1 bg-muted rounded text-sm font-mono">
@@ -193,4 +220,3 @@ export default function GamesPage() {
     </div>
   );
 }
-

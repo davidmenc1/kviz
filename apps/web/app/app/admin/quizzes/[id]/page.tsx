@@ -5,7 +5,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useParams } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -36,7 +42,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Printer } from "lucide-react";
 import Link from "next/link";
 
 export default function QuizDetailPage() {
@@ -97,7 +103,6 @@ export default function QuizDetailPage() {
         queryKey: trpc.question.getQuestions.queryKey({ quizId }),
       });
       setShowCreateQuestion(false);
-      e.currentTarget.reset();
     } catch (err) {
       console.error("Create question error:", err);
     }
@@ -205,11 +210,14 @@ export default function QuizDetailPage() {
 
   if (questionsQuery.error) {
     return (
-      <div className="text-destructive">Error: {questionsQuery.error.message}</div>
+      <div className="text-destructive">
+        Error: {questionsQuery.error.message}
+      </div>
     );
   }
 
-  const questions = questionsQuery.data?.sort((a, b) => a.order - b.order) || [];
+  const questions =
+    questionsQuery.data?.sort((a, b) => a.order - b.order) || [];
 
   return (
     <div className="space-y-6">
@@ -225,6 +233,12 @@ export default function QuizDetailPage() {
             Manage questions and options for this quiz
           </p>
         </div>
+        <Link href={`/app/admin/quizzes/${quizId}/print`}>
+          <Button variant="outline">
+            <Printer className="h-4 w-4 mr-2" />
+            Print
+          </Button>
+        </Link>
         <Dialog open={showCreateQuestion} onOpenChange={setShowCreateQuestion}>
           <DialogTrigger asChild>
             <Button>Add Question</Button>
@@ -259,7 +273,10 @@ export default function QuizDetailPage() {
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={createQuestionMutation.isPending}>
+                <Button
+                  type="submit"
+                  disabled={createQuestionMutation.isPending}
+                >
                   {createQuestionMutation.isPending ? "Creating..." : "Create"}
                 </Button>
               </div>
@@ -325,13 +342,20 @@ export default function QuizDetailPage() {
                             Update question information
                           </DialogDescription>
                         </DialogHeader>
-                        <form onSubmit={handleUpdateQuestion} className="space-y-4">
+                        <form
+                          onSubmit={handleUpdateQuestion}
+                          className="space-y-4"
+                        >
                           <div className="space-y-2">
-                            <Label htmlFor="edit-question-text">Question Text</Label>
+                            <Label htmlFor="edit-question-text">
+                              Question Text
+                            </Label>
                             <Textarea
                               id="edit-question-text"
                               name="text"
-                              defaultValue={editingQuestion?.text || question.text}
+                              defaultValue={
+                                editingQuestion?.text || question.text
+                              }
                               required
                             />
                           </div>
@@ -341,7 +365,9 @@ export default function QuizDetailPage() {
                               id="edit-question-order"
                               name="order"
                               type="number"
-                              defaultValue={editingQuestion?.order || question.order}
+                              defaultValue={
+                                editingQuestion?.order || question.order
+                              }
                               min="1"
                               required
                             />
@@ -358,7 +384,9 @@ export default function QuizDetailPage() {
                               type="submit"
                               disabled={updateQuestionMutation.isPending}
                             >
-                              {updateQuestionMutation.isPending ? "Saving..." : "Save"}
+                              {updateQuestionMutation.isPending
+                                ? "Saving..."
+                                : "Save"}
                             </Button>
                           </div>
                         </form>
@@ -374,8 +402,8 @@ export default function QuizDetailPage() {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            This will permanently delete this question and all its
-                            options.
+                            This will permanently delete this question and all
+                            its options.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -479,7 +507,7 @@ export default function QuizDetailPage() {
                     </p>
                   ) : (
                     <div className="space-y-2">
-                          {question.options.map((option) => (
+                      {question.options.map((option) => (
                         <div key={option.id}>
                           {editingOption?.id === option.id ? (
                             <Card>
@@ -517,7 +545,9 @@ export default function QuizDetailPage() {
                                         <SelectItem value="false">
                                           Incorrect
                                         </SelectItem>
-                                        <SelectItem value="true">Correct</SelectItem>
+                                        <SelectItem value="true">
+                                          Correct
+                                        </SelectItem>
                                       </SelectContent>
                                     </Select>
                                   </div>
@@ -583,11 +613,14 @@ export default function QuizDetailPage() {
                                         Are you sure?
                                       </AlertDialogTitle>
                                       <AlertDialogDescription>
-                                        This will permanently delete this option.
+                                        This will permanently delete this
+                                        option.
                                       </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
-                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogCancel>
+                                        Cancel
+                                      </AlertDialogCancel>
                                       <AlertDialogAction
                                         onClick={() =>
                                           handleDeleteOption(option.id)
@@ -615,4 +648,3 @@ export default function QuizDetailPage() {
     </div>
   );
 }
-
