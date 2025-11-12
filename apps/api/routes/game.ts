@@ -11,6 +11,7 @@ export const eventData = z.discriminatedUnion("type", [
     type: z.literal("new_question"),
     question: z.string(),
     questionId: z.string(),
+    imageUrl: z.string().url().optional().nullable(),
     options: z.array(
       z.object({
         id: z.string(),
@@ -100,6 +101,7 @@ export const gameRoutes = router({
             id: question.id,
             text: question.text,
             order: question.order,
+            imageUrl: question.imageUrl,
             options: question.options.map((option) => ({
               id: option.id,
               text: option.text,
@@ -156,6 +158,7 @@ export const gameRoutes = router({
             id: question.id,
             text: question.text,
             order: question.order,
+            imageUrl: question.imageUrl,
             options: question.options.map((option) => ({
               id: option.id,
               text: option.text,
@@ -395,6 +398,7 @@ export const gameRoutes = router({
             type: "new_question",
             question: question.text,
             questionId: question.id,
+            imageUrl: question.imageUrl,
             options: question.options.map((option) => ({
               id: option.id,
               text: option.text,

@@ -12,7 +12,10 @@ export default function TVViewPage() {
   const code = params.code as string;
   const trpc = useTRPC();
 
-  const [currentQuestion, setCurrentQuestion] = useState<string | null>(null);
+  const [currentQuestion, setCurrentQuestion] = useState<{
+    text: string;
+    imageUrl: string | null;
+  } | null>(null);
   const [currentOptions, setCurrentOptions] = useState<
     Array<{ id: string; text: string }>
   >([]);
@@ -34,7 +37,10 @@ export default function TVViewPage() {
   // Initialize with current question from game query if available
   useEffect(() => {
     if (gameQuery.data?.currentQuestion && !currentQuestion) {
-      setCurrentQuestion(gameQuery.data.currentQuestion.text);
+      setCurrentQuestion({
+        text: gameQuery.data.currentQuestion.text,
+        imageUrl: gameQuery.data.currentQuestion.imageUrl ?? null,
+      });
       setCurrentOptions(
         gameQuery.data.currentQuestion.options.map((opt) => ({
           id: opt.id,
@@ -59,7 +65,10 @@ export default function TVViewPage() {
     if (!eventData) return;
 
     if (eventData.type === "new_question") {
-      setCurrentQuestion(eventData.question);
+      setCurrentQuestion({
+        text: eventData.question,
+        imageUrl: eventData.imageUrl ?? null,
+      });
       setCurrentOptions(eventData.options);
       setCorrectOptionId(null);
     } else if (eventData.type === "correct_option") {
@@ -74,16 +83,16 @@ export default function TVViewPage() {
 
   if (gameQuery.isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black text-white">
-        <div className="text-4xl">Loading...</div>
+      <div className="h-screen w-screen flex items-center justify-center bg-black text-white overflow-hidden">
+        <div className="text-3xl">Loading...</div>
       </div>
     );
   }
 
   if (gameQuery.error || !gameQuery.data) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black text-white">
-        <div className="text-4xl">Game not found</div>
+      <div className="h-screen w-screen flex items-center justify-center bg-black text-white overflow-hidden">
+        <div className="text-3xl">Game not found</div>
       </div>
     );
   }
@@ -91,17 +100,17 @@ export default function TVViewPage() {
   // Beginning state - game not started yet
   if (!eventData && gameState === "not-started") {
     return (
-      <div className="min-h-screen bg-black text-white p-8 flex flex-col items-center justify-center">
-        <div className="max-w-6xl w-full text-center space-y-12">
-          <h1 className="text-6xl md:text-8xl font-bold">
+      <div className="h-screen w-screen bg-black text-white p-8 flex flex-col items-center justify-center overflow-hidden">
+        <div className="max-w-6xl w-full text-center space-y-8">
+          <h1 className="text-5xl md:text-7xl font-bold">
             {gameQuery.data.name}
           </h1>
-          <p className="text-4xl md:text-5xl mt-8 text-gray-400">
+          <p className="text-3xl md:text-4xl text-gray-400">
             Game Starting Soon...
           </p>
           {gameQuery.data.teams && gameQuery.data.teams.length > 0 && (
-            <div className="mt-16">
-              <p className="text-3xl md:text-4xl mb-8 text-gray-300">
+            <div className="mt-8">
+              <p className="text-2xl md:text-3xl text-gray-300">
                 Teams Joined: {gameQuery.data.teams.length}
               </p>
             </div>
@@ -115,37 +124,35 @@ export default function TVViewPage() {
   if (eventData?.type === "end" || gameState === "ended") {
     const teams = eventData?.type === "end" ? eventData.teams : [];
     return (
-      <div className="min-h-screen bg-black text-white p-8 flex flex-col items-center justify-center">
-        <div className="max-w-6xl w-full space-y-12">
-          <div className="text-center">
-            <div className="text-8xl md:text-9xl mb-8">🎉</div>
-            <h1 className="text-6xl md:text-8xl font-bold mb-4">Game Over!</h1>
-            <p className="text-3xl md:text-4xl text-gray-400">Final Results</p>
+      <div className="h-screen w-screen bg-black text-white p-6 flex flex-col items-center justify-center overflow-hidden">
+        <div className="max-w-6xl w-full h-full flex flex-col justify-center space-y-6">
+          <div className="text-center flex-shrink-0">
+            <div className="text-6xl mb-4">🎉</div>
+            <h1 className="text-5xl md:text-6xl font-bold mb-2">Game Over!</h1>
+            <p className="text-2xl md:text-3xl text-gray-400">Final Results</p>
           </div>
 
           {teams.length > 0 && (
-            <div className="space-y-6 mt-16">
+            <div className="space-y-3 overflow-y-auto flex-1 min-h-0">
               {teams
                 .sort((a, b) => b.score - a.score)
                 .map((team, index) => (
                   <div
                     key={team.id}
-                    className={`p-8 rounded-lg border-4 transition-all ${
+                    className={`p-4 rounded-lg border-4 transition-all flex-shrink-0 ${
                       index === 0
                         ? "bg-yellow-600 border-yellow-400"
                         : "bg-gray-900 border-gray-700"
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        {index === 0 && (
-                          <div className="text-6xl md:text-7xl">🏆</div>
-                        )}
-                        <div className="text-4xl md:text-5xl font-bold">
+                      <div className="flex items-center gap-3">
+                        {index === 0 && <div className="text-4xl">🏆</div>}
+                        <div className="text-2xl md:text-3xl font-bold">
                           {team.name}
                         </div>
                       </div>
-                      <div className="text-5xl md:text-6xl font-bold">
+                      <div className="text-3xl md:text-4xl font-bold">
                         {team.score} pts
                       </div>
                     </div>
@@ -170,26 +177,36 @@ export default function TVViewPage() {
     );
 
     return (
-      <div className="h-screen bg-black text-white p-6 flex flex-col items-center justify-center overflow-hidden">
-        <div className="max-w-6xl w-full h-full flex flex-col justify-between py-4">
+      <div className="h-screen w-screen bg-black text-white p-4 flex flex-col items-center justify-center overflow-hidden">
+        <div className="max-w-6xl w-full h-full flex flex-col justify-between py-2">
           {currentQuestion && correctOption && (
             <div className="flex-shrink-0">
-              <div className="text-center mb-6">
-                <h1 className="text-4xl md:text-6xl font-bold leading-tight line-clamp-3">
-                  {currentQuestion}
+              <div className="text-center mb-3">
+                <h1 className="text-2xl md:text-3xl font-bold leading-tight line-clamp-2">
+                  {currentQuestion.text}
                 </h1>
               </div>
 
-              <div className="mt-8">
-                <div className="p-6 rounded-lg border-4 bg-green-600 border-green-400 text-white">
-                  <div className="flex items-center gap-4">
-                    <div className="text-4xl md:text-5xl font-bold text-white">
+              {currentQuestion.imageUrl && (
+                <div className="flex justify-center mb-3">
+                  <img
+                    src={currentQuestion.imageUrl}
+                    alt="Question illustration"
+                    className="max-h-[25vh] w-auto rounded-lg object-contain shadow-2xl"
+                  />
+                </div>
+              )}
+
+              <div className="mt-3">
+                <div className="p-3 rounded-lg border-4 bg-green-600 border-green-400 text-white">
+                  <div className="flex items-center gap-3">
+                    <div className="text-2xl md:text-3xl font-bold text-white">
                       {String.fromCharCode(65 + correctOptionIndex)}.
                     </div>
-                    <div className="text-3xl md:text-4xl font-semibold flex-1">
+                    <div className="text-xl md:text-2xl font-semibold flex-1 line-clamp-2">
                       {correctOption.text}
                     </div>
-                    <div className="text-4xl md:text-5xl">✓</div>
+                    <div className="text-2xl md:text-3xl">✓</div>
                   </div>
                 </div>
               </div>
@@ -197,32 +214,32 @@ export default function TVViewPage() {
           )}
 
           {/* Teams Leaderboard */}
-          <div className="flex-shrink min-h-0 flex flex-col mt-6">
-            <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">
+          <div className="flex-shrink min-h-0 flex flex-col mt-3">
+            <h2 className="text-2xl md:text-3xl font-bold text-center mb-2">
               Leaderboard
             </h2>
-            <div className="space-y-3 overflow-y-auto flex-1">
+            <div className="space-y-2 overflow-y-auto flex-1">
               {teams
                 .sort((a, b) => b.score - a.score)
                 .map((team, index) => (
                   <div
                     key={team.id}
-                    className={`p-4 rounded-lg border-4 transition-all flex-shrink-0 ${
+                    className={`p-3 rounded-lg border-3 transition-all flex-shrink-0 ${
                       index === 0
                         ? "bg-yellow-600 border-yellow-400"
                         : "bg-gray-900 border-gray-700"
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         {index === 0 && (
-                          <div className="text-4xl md:text-5xl">🏆</div>
+                          <div className="text-2xl md:text-3xl">🏆</div>
                         )}
-                        <div className="text-2xl md:text-3xl font-bold">
+                        <div className="text-lg md:text-xl font-bold line-clamp-1">
                           {team.name}
                         </div>
                       </div>
-                      <div className="text-3xl md:text-4xl font-bold">
+                      <div className="text-xl md:text-2xl font-bold">
                         {team.score} pts
                       </div>
                     </div>
@@ -237,41 +254,51 @@ export default function TVViewPage() {
 
   // Question state
   return (
-    <div className="min-h-screen bg-black text-white p-8 flex flex-col items-center justify-center">
-      <div className="max-w-6xl w-full space-y-12">
+    <div className="h-screen w-screen bg-black text-white p-4 flex flex-col items-center justify-center overflow-hidden">
+      <div className="max-w-6xl w-full h-full flex flex-col justify-center py-4">
         {currentQuestion ? (
           <>
-            <div className="text-center">
-              <h1 className="text-6xl md:text-8xl font-bold leading-tight">
-                {currentQuestion}
+            <div className="text-center flex-shrink-0 mb-4">
+              <h1 className="text-3xl md:text-4xl font-bold leading-tight line-clamp-3">
+                {currentQuestion.text}
               </h1>
             </div>
 
-            <div className="space-y-6 mt-16">
+            {currentQuestion.imageUrl && (
+              <div className="flex justify-center flex-shrink-0 mb-4">
+                <img
+                  src={currentQuestion.imageUrl}
+                  alt="Question illustration"
+                  className="max-h-[30vh] w-auto rounded-lg object-contain shadow-2xl"
+                />
+              </div>
+            )}
+
+            <div className="space-y-3 flex-shrink-0">
               {currentOptions.map((option, index) => {
                 const isCorrect = correctOptionId === option.id;
                 return (
                   <div
                     key={option.id}
-                    className={`p-8 rounded-lg border-4 transition-all ${
+                    className={`p-4 rounded-lg border-4 transition-all ${
                       isCorrect
                         ? "bg-green-600 border-green-400 text-white"
                         : "bg-gray-900 border-gray-700 text-white"
                     }`}
                   >
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
                       <div
-                        className={`text-5xl md:text-6xl font-bold ${
+                        className={`text-3xl md:text-4xl font-bold ${
                           isCorrect ? "text-white" : "text-gray-400"
                         }`}
                       >
                         {String.fromCharCode(65 + index)}.
                       </div>
-                      <div className="text-4xl md:text-5xl font-semibold flex-1">
+                      <div className="text-2xl md:text-3xl font-semibold flex-1 line-clamp-2">
                         {option.text}
                       </div>
                       {isCorrect && (
-                        <div className="text-5xl md:text-6xl">✓</div>
+                        <div className="text-3xl md:text-4xl">✓</div>
                       )}
                     </div>
                   </div>
@@ -281,10 +308,10 @@ export default function TVViewPage() {
           </>
         ) : (
           <div className="text-center">
-            <h1 className="text-6xl md:text-8xl font-bold">
+            <h1 className="text-5xl md:text-6xl font-bold">
               {gameQuery.data.name}
             </h1>
-            <p className="text-3xl md:text-4xl mt-8 text-gray-400">
+            <p className="text-2xl md:text-3xl mt-6 text-gray-400">
               Waiting for question...
             </p>
           </div>

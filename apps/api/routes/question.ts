@@ -8,7 +8,12 @@ import { Type } from "@google/genai";
 export const questionRoutes = router({
   createQuestion: adminProcedure
     .input(
-      z.object({ quizId: z.string(), text: z.string(), order: z.number() })
+      z.object({
+        quizId: z.string(),
+        text: z.string(),
+        order: z.number(),
+        imageUrl: z.string().url().optional().nullable(),
+      })
     )
     .mutation(async ({ input }) => {
       const question = await prisma.question.create({
@@ -17,6 +22,7 @@ export const questionRoutes = router({
           quizId: input.quizId,
           text: input.text,
           order: input.order,
+          imageUrl: input.imageUrl ?? null,
         },
       });
       return question;
@@ -40,11 +46,22 @@ export const questionRoutes = router({
       return question;
     }),
   updateQuestion: adminProcedure
-    .input(z.object({ id: z.string(), text: z.string(), order: z.number() }))
+    .input(
+      z.object({
+        id: z.string(),
+        text: z.string(),
+        order: z.number(),
+        imageUrl: z.string().url().optional().nullable(),
+      })
+    )
     .mutation(async ({ input }) => {
       const question = await prisma.question.update({
         where: { id: input.id },
-        data: { text: input.text, order: input.order },
+        data: {
+          text: input.text,
+          order: input.order,
+          imageUrl: input.imageUrl ?? null,
+        },
       });
       return question;
     }),
@@ -117,8 +134,7 @@ export const questionRoutes = router({
       const response = await gemini.models.generateContent({
         model: "gemini-2.5-flash",
         contents: `Udělej kvíz podle tohoto promptu, dej tam cca 15 otázek:
-        ${input.prompt}
-        `,
+        ${input.prompt}`,
         config: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -177,6 +193,7 @@ export const questionRoutes = router({
               id: nanoid(),
               text: otazka.otazka,
               order: index + 1,
+              imageUrl: null,
               options: {
                 create: otazka.odpovedi.map((odpoved) => ({
                   id: nanoid(),

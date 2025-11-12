@@ -217,6 +217,20 @@ export default function GameControlPage() {
               <Label className="text-sm font-semibold">Question</Label>
               <p className="mt-2 text-lg">{game.currentQuestion.text}</p>
             </div>
+            {game.currentQuestion.imageUrl && (
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">
+                  TV Image Preview
+                </Label>
+                <div className="rounded-md border bg-muted/40 p-3">
+                  <img
+                    src={game.currentQuestion.imageUrl}
+                    alt="Question illustration"
+                    className="max-h-60 w-full rounded-md object-contain bg-black/5"
+                  />
+                </div>
+              </div>
+            )}
             <div>
               <Label className="text-sm font-semibold">Options</Label>
               <div className="mt-2 space-y-2">

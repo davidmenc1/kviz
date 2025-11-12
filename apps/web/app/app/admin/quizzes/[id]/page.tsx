@@ -57,6 +57,7 @@ export default function QuizDetailPage() {
     id: string;
     text: string;
     order: number;
+    imageUrl: string | null;
   } | null>(null);
   const [editingOption, setEditingOption] = useState<{
     id: string;
@@ -93,11 +94,14 @@ export default function QuizDetailPage() {
     const formData = new FormData(e.currentTarget);
     const text = formData.get("text") as string;
     const order = parseInt(formData.get("order") as string);
+    const imageUrlInput = (formData.get("imageUrl") as string | null)?.trim();
+    const imageUrl = imageUrlInput ? imageUrlInput : null;
     try {
       await createQuestionMutation.mutateAsync({
         quizId,
         text,
         order,
+        imageUrl,
       });
       queryClient.invalidateQueries({
         queryKey: trpc.question.getQuestions.queryKey({ quizId }),
@@ -114,11 +118,14 @@ export default function QuizDetailPage() {
     const formData = new FormData(e.currentTarget);
     const text = formData.get("text") as string;
     const order = parseInt(formData.get("order") as string);
+    const imageUrlInput = (formData.get("imageUrl") as string | null)?.trim();
+    const imageUrl = imageUrlInput ? imageUrlInput : null;
     try {
       await updateQuestionMutation.mutateAsync({
         id: editingQuestion.id,
         text,
         order,
+        imageUrl,
       });
       queryClient.invalidateQueries({
         queryKey: trpc.question.getQuestions.queryKey({ quizId }),
@@ -265,6 +272,18 @@ export default function QuizDetailPage() {
                   required
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="question-image">Image URL (optional)</Label>
+                <Input
+                  id="question-image"
+                  name="imageUrl"
+                  type="url"
+                  placeholder="https://example.com/image.jpg"
+                />
+                <p className="text-xs text-muted-foreground">
+                  This image appears on the TV view only.
+                </p>
+              </div>
               <div className="flex justify-end gap-2">
                 <Button
                   type="button"
@@ -314,6 +333,7 @@ export default function QuizDetailPage() {
                             id: question.id,
                             text: question.text,
                             order: question.order,
+                            imageUrl: question.imageUrl ?? null,
                           });
                         } else {
                           setEditingQuestion(null);
@@ -329,6 +349,7 @@ export default function QuizDetailPage() {
                               id: question.id,
                               text: question.text,
                               order: question.order,
+                              imageUrl: question.imageUrl ?? null,
                             })
                           }
                         >
@@ -371,6 +392,25 @@ export default function QuizDetailPage() {
                               min="1"
                               required
                             />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="edit-question-image">
+                              Image URL (optional)
+                            </Label>
+                            <Input
+                              id="edit-question-image"
+                              name="imageUrl"
+                              type="url"
+                              placeholder="https://example.com/image.jpg"
+                              defaultValue={
+                                editingQuestion?.imageUrl ??
+                                question.imageUrl ??
+                                ""
+                              }
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              This image appears on the TV view only.
+                            </p>
                           </div>
                           <div className="flex justify-end gap-2">
                             <Button
@@ -422,6 +462,20 @@ export default function QuizDetailPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
+                  {question.imageUrl && (
+                    <div className="rounded-lg border bg-muted/40 p-3">
+                      <Label className="text-xs text-muted-foreground">
+                        TV Image Preview
+                      </Label>
+                      <div className="mt-2">
+                        <img
+                          src={question.imageUrl}
+                          alt={`Question ${question.order} illustration`}
+                          className="max-h-48 w-full rounded-md object-contain bg-black/5"
+                        />
+                      </div>
+                    </div>
+                  )}
                   <div className="flex justify-between items-center">
                     <h4 className="font-medium">Options</h4>
                     <Dialog
