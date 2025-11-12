@@ -49,10 +49,10 @@ function TRPCClientProvider({ children }: { children: React.ReactNode }) {
             // uses the httpSubscriptionLink for subscriptions
             condition: (op) => op.type === "subscription",
             true: httpSubscriptionLink({
-              url: `http://localhost:3001`,
+              url: process.env.NEXT_PUBLIC_SERVER_HOST!,
             }),
             false: httpBatchLink({
-              url: `http://localhost:3001`,
+              url: process.env.NEXT_PUBLIC_SERVER_HOST!,
               headers: () => {
                 if (!sessionId) return {};
                 return {
