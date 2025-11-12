@@ -90,5 +90,3 @@ describe("Quiz Routes", () => {
     expect(result.success).toBe(true);
   });
 });
-
-
