@@ -15,6 +15,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { EventData } from "../../../../../../api/routes/game";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 export default function PlayerGamePage() {
   const params = useParams();
@@ -26,14 +28,23 @@ export default function PlayerGamePage() {
   // Track selected option for current question
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
   const selectedOptionIdRef = useRef<string | null>(null);
+  const [rangeValue, setRangeValue] = useState<number | null>(null);
+  const rangeValueRef = useRef<number | null>(null);
   const [currentQuestionId, setCurrentQuestionId] = useState<string | null>(
     null
   );
+  const [currentQuestionType, setCurrentQuestionType] = useState<
+    "MULTIPLE_CHOICE" | "YES_NO" | "RANGE" | null
+  >(null);
   const [currentOptions, setCurrentOptions] = useState<
     Array<{ id: string; text: string }>
   >([]);
+  const [currentMinValue, setCurrentMinValue] = useState<number>(0);
+  const [currentMaxValue, setCurrentMaxValue] = useState<number>(100);
   const [lastAnswerFeedback, setLastAnswerFeedback] = useState<{
-    optionId: string;
+    optionId?: string;
+    rangeValue?: number;
+    correctValue?: number;
     isCorrect: boolean;
   } | null>(null);
 
@@ -67,20 +78,38 @@ export default function PlayerGamePage() {
       // Reset selection for new question
       setSelectedOptionId(null);
       selectedOptionIdRef.current = null;
+      setRangeValue(null);
+      rangeValueRef.current = null;
       setCurrentQuestionId(eventData.questionId);
+      setCurrentQuestionType(eventData.questionType);
       setCurrentOptions(eventData.options);
+      setCurrentMinValue(eventData.minValue ?? 0);
+      setCurrentMaxValue(eventData.maxValue ?? 100);
       setLastAnswerFeedback(null);
     } else if (eventData.type === "correct_option") {
-      // Show feedback for the last selected option
-      const currentSelected = selectedOptionIdRef.current;
-      if (currentSelected) {
-        setLastAnswerFeedback({
-          optionId: currentSelected,
-          isCorrect: currentSelected === eventData.optionId,
-        });
+      // Show feedback for the last selected option or range value
+      if (eventData.questionType === "RANGE") {
+        const currentRangeVal = rangeValueRef.current;
+        if (currentRangeVal !== null && eventData.correctValue !== null) {
+          const tolerance = (currentMaxValue - currentMinValue) * 0.05;
+          const difference = Math.abs(currentRangeVal - eventData.correctValue);
+          setLastAnswerFeedback({
+            rangeValue: currentRangeVal,
+            correctValue: eventData.correctValue,
+            isCorrect: difference <= tolerance,
+          });
+        }
+      } else {
+        const currentSelected = selectedOptionIdRef.current;
+        if (currentSelected) {
+          setLastAnswerFeedback({
+            optionId: currentSelected,
+            isCorrect: currentSelected === eventData.optionId,
+          });
+        }
       }
     }
-  }, [gameEventsSubscription.data]);
+  }, [gameEventsSubscription.data, currentMinValue, currentMaxValue]);
 
   // Helper function to get option text by ID
   const getOptionText = (optionId: string): string => {
@@ -177,6 +206,26 @@ export default function PlayerGamePage() {
     }
   };
 
+  // Handle range submission
+  const handleRangeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!gameQuery.data?.id || !currentQuestionId || rangeValue === null)
+      return;
+    if (eventData?.type !== "new_question") return;
+
+    rangeValueRef.current = rangeValue;
+    try {
+      await submitAnswerMutation.mutateAsync({
+        gameId: gameQuery.data.id,
+        playerId: playerId,
+        questionId: currentQuestionId,
+        rangeValue: rangeValue,
+      });
+    } catch (error) {
+      console.error("Failed to submit answer:", error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-3xl mx-auto px-4 py-8">
@@ -219,37 +268,93 @@ export default function PlayerGamePage() {
                 {eventData.question}
               </div>
 
-              <div className="space-y-3 pt-4">
-                {eventData.options.map((option, index) => {
-                  const isSelected = selectedOptionId === option.id;
-                  return (
-                    <button
-                      key={option.id}
-                      onClick={() => handleOptionClick(option.id)}
-                      disabled={submitAnswerMutation.isPending || isSelected}
-                      className={`w-full p-4 text-left rounded-lg border-2 transition-all ${
-                        isSelected
-                          ? "border-primary bg-primary/10 shadow-md scale-[1.02]"
-                          : "border-border bg-card hover:bg-muted/50 hover:border-primary/50"
-                      } ${
-                        submitAnswerMutation.isPending || isSelected
-                          ? "cursor-default"
-                          : "cursor-pointer active:scale-[0.98]"
-                      }`}
+              {eventData.questionType === "RANGE" ? (
+                <form onSubmit={handleRangeSubmit} className="space-y-4 pt-4">
+                  <div className="space-y-3">
+                    <Label htmlFor="range-input" className="text-base">
+                      Enter your answer ({eventData.minValue} -{" "}
+                      {eventData.maxValue})
+                    </Label>
+                    <Input
+                      id="range-input"
+                      type="number"
+                      min={eventData.minValue ?? 0}
+                      max={eventData.maxValue ?? 100}
+                      value={rangeValue ?? ""}
+                      onChange={(e) => {
+                        const val = e.target.value
+                          ? parseInt(e.target.value)
+                          : null;
+                        setRangeValue(val);
+                      }}
+                      placeholder={`Enter a number between ${eventData.minValue} and ${eventData.maxValue}`}
+                      className="text-lg p-6"
+                      disabled={rangeValueRef.current !== null}
+                      required
+                    />
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <span>Min: {eventData.minValue}</span>
+                      <span>Max: {eventData.maxValue}</span>
+                    </div>
+                  </div>
+                  {rangeValueRef.current === null ? (
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      size="lg"
+                      disabled={
+                        rangeValue === null || submitAnswerMutation.isPending
+                      }
                     >
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">{option.text}</span>
-                        {isSelected && <Badge className="ml-3">Selected</Badge>}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+                      {submitAnswerMutation.isPending
+                        ? "Submitting..."
+                        : "Submit Answer"}
+                    </Button>
+                  ) : (
+                    <div className="pt-2 text-center text-sm text-muted-foreground">
+                      Answer submitted! Waiting for results...
+                    </div>
+                  )}
+                </form>
+              ) : (
+                <>
+                  <div className="space-y-3 pt-4">
+                    {eventData.options.map((option, index) => {
+                      const isSelected = selectedOptionId === option.id;
+                      return (
+                        <button
+                          key={option.id}
+                          onClick={() => handleOptionClick(option.id)}
+                          disabled={
+                            submitAnswerMutation.isPending || isSelected
+                          }
+                          className={`w-full p-4 text-left rounded-lg border-2 transition-all ${
+                            isSelected
+                              ? "border-primary bg-primary/10 shadow-md scale-[1.02]"
+                              : "border-border bg-card hover:bg-muted/50 hover:border-primary/50"
+                          } ${
+                            submitAnswerMutation.isPending || isSelected
+                              ? "cursor-default"
+                              : "cursor-pointer active:scale-[0.98]"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium">{option.text}</span>
+                            {isSelected && (
+                              <Badge className="ml-3">Selected</Badge>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
 
-              {selectedOptionId && (
-                <div className="pt-2 text-center text-sm text-muted-foreground">
-                  Answer submitted! Waiting for results...
-                </div>
+                  {selectedOptionId && (
+                    <div className="pt-2 text-center text-sm text-muted-foreground">
+                      Answer submitted! Waiting for results...
+                    </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
@@ -276,12 +381,29 @@ export default function PlayerGamePage() {
                     >
                       {lastAnswerFeedback.isCorrect ? "Correct!" : "Incorrect"}
                     </div>
-                    <div className="text-muted-foreground">
-                      The correct answer was:{" "}
-                      <span className="font-medium">
-                        {getOptionText(eventData.optionId)}
-                      </span>
-                    </div>
+                    {lastAnswerFeedback.rangeValue !== undefined ? (
+                      <div className="space-y-2">
+                        <div className="text-muted-foreground">
+                          Your answer:{" "}
+                          <span className="font-bold text-lg">
+                            {lastAnswerFeedback.rangeValue}
+                          </span>
+                        </div>
+                        <div className="text-muted-foreground">
+                          Correct answer:{" "}
+                          <span className="font-bold text-lg text-green-600 dark:text-green-400">
+                            {lastAnswerFeedback.correctValue}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-muted-foreground">
+                        The correct answer was:{" "}
+                        <span className="font-medium">
+                          {getOptionText(eventData.optionId ?? "")}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

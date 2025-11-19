@@ -15,11 +15,15 @@ export default function TVViewPage() {
   const [currentQuestion, setCurrentQuestion] = useState<{
     text: string;
     imageUrl: string | null;
+    type: "MULTIPLE_CHOICE" | "YES_NO" | "RANGE";
+    minValue?: number | null;
+    maxValue?: number | null;
   } | null>(null);
   const [currentOptions, setCurrentOptions] = useState<
     Array<{ id: string; text: string }>
   >([]);
   const [correctOptionId, setCorrectOptionId] = useState<string | null>(null);
+  const [correctValue, setCorrectValue] = useState<number | null>(null);
 
   // Get game by code to verify it exists
   const gameQuery = useQuery(trpc.game.getGameByCode.queryOptions({ code }));
@@ -40,6 +44,12 @@ export default function TVViewPage() {
       setCurrentQuestion({
         text: gameQuery.data.currentQuestion.text,
         imageUrl: gameQuery.data.currentQuestion.imageUrl ?? null,
+        type: gameQuery.data.currentQuestion.type as
+          | "MULTIPLE_CHOICE"
+          | "YES_NO"
+          | "RANGE",
+        minValue: gameQuery.data.currentQuestion.minValue ?? null,
+        maxValue: gameQuery.data.currentQuestion.maxValue ?? null,
       });
       setCurrentOptions(
         gameQuery.data.currentQuestion.options.map((opt) => ({
@@ -49,11 +59,15 @@ export default function TVViewPage() {
       );
       // If we're in results state, show the correct answer
       if (gameQuery.data.state === "results") {
-        const correctOption = gameQuery.data.currentQuestion.options.find(
-          (opt) => opt.isCorrect
-        );
-        if (correctOption) {
-          setCorrectOptionId(correctOption.id);
+        if (gameQuery.data.currentQuestion.type === "RANGE") {
+          setCorrectValue(gameQuery.data.currentQuestion.correctValue ?? null);
+        } else {
+          const correctOption = gameQuery.data.currentQuestion.options.find(
+            (opt) => opt.isCorrect
+          );
+          if (correctOption) {
+            setCorrectOptionId(correctOption.id);
+          }
         }
       }
     }
@@ -68,11 +82,19 @@ export default function TVViewPage() {
       setCurrentQuestion({
         text: eventData.question,
         imageUrl: eventData.imageUrl ?? null,
+        type: eventData.questionType,
+        minValue: eventData.minValue ?? null,
+        maxValue: eventData.maxValue ?? null,
       });
       setCurrentOptions(eventData.options);
       setCorrectOptionId(null);
+      setCorrectValue(null);
     } else if (eventData.type === "correct_option") {
-      setCorrectOptionId(eventData.optionId);
+      if (eventData.questionType === "RANGE") {
+        setCorrectValue(eventData.correctValue ?? null);
+      } else {
+        setCorrectOptionId(eventData.optionId ?? null);
+      }
     } else if (eventData.type === "end") {
       // Keep showing the last question
     }
@@ -179,7 +201,7 @@ export default function TVViewPage() {
     return (
       <div className="h-screen w-screen bg-black text-white p-4 flex flex-col items-center justify-center overflow-hidden">
         <div className="max-w-6xl w-full h-full flex flex-col justify-between py-2">
-          {currentQuestion && correctOption && (
+          {currentQuestion && (
             <div className="flex-shrink-0">
               <div className="text-center mb-3">
                 <h1 className="text-2xl md:text-3xl font-bold leading-tight line-clamp-2">
@@ -198,17 +220,36 @@ export default function TVViewPage() {
               )}
 
               <div className="mt-3">
-                <div className="p-3 rounded-lg border-4 bg-green-600 border-green-400 text-white">
-                  <div className="flex items-center gap-3">
-                    <div className="text-2xl md:text-3xl font-bold text-white">
-                      {String.fromCharCode(65 + correctOptionIndex)}.
+                {currentQuestion.type === "RANGE" ? (
+                  <div className="p-4 rounded-lg border-4 bg-green-600 border-green-400 text-white">
+                    <div className="text-center space-y-2">
+                      <div className="text-lg md:text-xl font-medium">
+                        Correct Answer
+                      </div>
+                      <div className="text-4xl md:text-5xl font-bold">
+                        {correctValue}
+                      </div>
+                      <div className="text-sm md:text-base opacity-90">
+                        Range: {currentQuestion.minValue} -{" "}
+                        {currentQuestion.maxValue}
+                      </div>
                     </div>
-                    <div className="text-xl md:text-2xl font-semibold flex-1 line-clamp-2">
-                      {correctOption.text}
-                    </div>
-                    <div className="text-2xl md:text-3xl">✓</div>
                   </div>
-                </div>
+                ) : (
+                  correctOption && (
+                    <div className="p-3 rounded-lg border-4 bg-green-600 border-green-400 text-white">
+                      <div className="flex items-center gap-3">
+                        <div className="text-2xl md:text-3xl font-bold text-white">
+                          {String.fromCharCode(65 + correctOptionIndex)}.
+                        </div>
+                        <div className="text-xl md:text-2xl font-semibold flex-1 line-clamp-2">
+                          {correctOption.text}
+                        </div>
+                        <div className="text-2xl md:text-3xl">✓</div>
+                      </div>
+                    </div>
+                  )
+                )}
               </div>
             </div>
           )}
@@ -274,37 +315,52 @@ export default function TVViewPage() {
               </div>
             )}
 
-            <div className="space-y-3 flex-shrink-0">
-              {currentOptions.map((option, index) => {
-                const isCorrect = correctOptionId === option.id;
-                return (
-                  <div
-                    key={option.id}
-                    className={`p-4 rounded-lg border-4 transition-all ${
-                      isCorrect
-                        ? "bg-green-600 border-green-400 text-white"
-                        : "bg-gray-900 border-gray-700 text-white"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`text-3xl md:text-4xl font-bold ${
-                          isCorrect ? "text-white" : "text-gray-400"
-                        }`}
-                      >
-                        {String.fromCharCode(65 + index)}.
-                      </div>
-                      <div className="text-2xl md:text-3xl font-semibold flex-1 line-clamp-2">
-                        {option.text}
-                      </div>
-                      {isCorrect && (
-                        <div className="text-3xl md:text-4xl">✓</div>
-                      )}
+            {currentQuestion.type === "RANGE" ? (
+              <div className="flex-shrink-0">
+                <div className="p-6 rounded-lg border-4 bg-gray-900 border-gray-700 text-white">
+                  <div className="text-center space-y-3">
+                    <div className="text-xl md:text-2xl font-medium">
+                      Enter a number between
+                    </div>
+                    <div className="text-3xl md:text-4xl font-bold">
+                      {currentQuestion.minValue} - {currentQuestion.maxValue}
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3 flex-shrink-0">
+                {currentOptions.map((option, index) => {
+                  const isCorrect = correctOptionId === option.id;
+                  return (
+                    <div
+                      key={option.id}
+                      className={`p-4 rounded-lg border-4 transition-all ${
+                        isCorrect
+                          ? "bg-green-600 border-green-400 text-white"
+                          : "bg-gray-900 border-gray-700 text-white"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`text-3xl md:text-4xl font-bold ${
+                            isCorrect ? "text-white" : "text-gray-400"
+                          }`}
+                        >
+                          {String.fromCharCode(65 + index)}.
+                        </div>
+                        <div className="text-2xl md:text-3xl font-semibold flex-1 line-clamp-2">
+                          {option.text}
+                        </div>
+                        {isCorrect && (
+                          <div className="text-3xl md:text-4xl">✓</div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </>
         ) : (
           <div className="text-center">

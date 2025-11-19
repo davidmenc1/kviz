@@ -231,30 +231,54 @@ export default function GameControlPage() {
                 </div>
               </div>
             )}
-            <div>
-              <Label className="text-sm font-semibold">Options</Label>
-              <div className="mt-2 space-y-2">
-                {game.currentQuestion.options.map((option) => (
-                  <div
-                    key={option.id}
-                    className={`p-3 border rounded-md ${
-                      game.state === "results" && option.isCorrect
-                        ? "bg-green-50 border-green-500 dark:bg-green-950 dark:border-green-700"
-                        : "bg-muted/50"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      {game.state === "results" && option.isCorrect && (
-                        <Badge variant="default" className="bg-green-600">
-                          Correct
-                        </Badge>
+            {game.currentQuestion.type === "RANGE" ? (
+              <div>
+                <Label className="text-sm font-semibold">Range Question</Label>
+                <div className="mt-2 space-y-2">
+                  <div className="p-3 border rounded-md bg-muted/50">
+                    <div className="space-y-1 text-sm">
+                      <div>
+                        <span className="font-medium">Range:</span>{" "}
+                        {game.currentQuestion.minValue} -{" "}
+                        {game.currentQuestion.maxValue}
+                      </div>
+                      {game.state === "results" && (
+                        <div className="pt-2">
+                          <Badge variant="default" className="bg-green-600">
+                            Correct Answer: {game.currentQuestion.correctValue}
+                          </Badge>
+                        </div>
                       )}
-                      <span>{option.text}</span>
                     </div>
                   </div>
-                ))}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div>
+                <Label className="text-sm font-semibold">Options</Label>
+                <div className="mt-2 space-y-2">
+                  {game.currentQuestion.options.map((option) => (
+                    <div
+                      key={option.id}
+                      className={`p-3 border rounded-md ${
+                        game.state === "results" && option.isCorrect
+                          ? "bg-green-50 border-green-500 dark:bg-green-950 dark:border-green-700"
+                          : "bg-muted/50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        {game.state === "results" && option.isCorrect && (
+                          <Badge variant="default" className="bg-green-600">
+                            Correct
+                          </Badge>
+                        )}
+                        <span>{option.text}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

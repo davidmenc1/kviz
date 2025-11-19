@@ -13,17 +13,26 @@ export const questionRoutes = router({
         text: z.string(),
         order: z.number(),
         imageUrl: z.string().url().optional().nullable(),
+        type: z.enum(["MULTIPLE_CHOICE", "YES_NO", "RANGE"]).optional(),
+        minValue: z.number().optional().nullable(),
+        maxValue: z.number().optional().nullable(),
+        correctValue: z.number().optional().nullable(),
       })
     )
     .mutation(async ({ input }) => {
+      const data: any = {
+        id: nanoid(),
+        quizId: input.quizId,
+        text: input.text,
+        order: input.order,
+        imageUrl: input.imageUrl ?? null,
+        type: input.type ?? "MULTIPLE_CHOICE",
+        minValue: input.minValue ?? null,
+        maxValue: input.maxValue ?? null,
+        correctValue: input.correctValue ?? null,
+      };
       const question = await prisma.question.create({
-        data: {
-          id: nanoid(),
-          quizId: input.quizId,
-          text: input.text,
-          order: input.order,
-          imageUrl: input.imageUrl ?? null,
-        },
+        data,
       });
       return question;
     }),
@@ -52,16 +61,25 @@ export const questionRoutes = router({
         text: z.string(),
         order: z.number(),
         imageUrl: z.string().url().optional().nullable(),
+        type: z.enum(["MULTIPLE_CHOICE", "YES_NO", "RANGE"]).optional(),
+        minValue: z.number().optional().nullable(),
+        maxValue: z.number().optional().nullable(),
+        correctValue: z.number().optional().nullable(),
       })
     )
     .mutation(async ({ input }) => {
+      const data: any = {
+        text: input.text,
+        order: input.order,
+        imageUrl: input.imageUrl ?? null,
+        type: input.type ?? "MULTIPLE_CHOICE",
+        minValue: input.minValue ?? null,
+        maxValue: input.maxValue ?? null,
+        correctValue: input.correctValue ?? null,
+      };
       const question = await prisma.question.update({
         where: { id: input.id },
-        data: {
-          text: input.text,
-          order: input.order,
-          imageUrl: input.imageUrl ?? null,
-        },
+        data,
       });
       return question;
     }),
@@ -121,20 +139,31 @@ export const questionRoutes = router({
         otazky: z.array(
           z.object({
             otazka: z.string(),
-            odpovedi: z.array(
-              z.object({
-                spravne: z.boolean(),
-                odpoved: z.string(),
-              })
-            ),
+            typ: z.enum(["MULTIPLE_CHOICE", "YES_NO", "RANGE"]),
+            odpovedi: z
+              .array(
+                z.object({
+                  spravne: z.boolean(),
+                  odpoved: z.string(),
+                })
+              )
+              .nullable()
+              .optional(),
+            minHodnota: z.number().nullable().optional(),
+            maxHodnota: z.number().nullable().optional(),
+            spravnaHodnota: z.number().nullable().optional(),
           })
         ),
       });
 
       const response = await gemini.models.generateContent({
         model: "gemini-2.5-flash",
-        contents: `Udělej kvíz podle tohoto promptu, dej tam cca 15 otázek:
-        ${input.prompt}`,
+        contents: `Udělej kvíz podle tohoto promptu, dej tam cca 15 otázek. Použij různé typy otázek:
+        - MULTIPLE_CHOICE: otázky s více možnostmi (odpovedi pole)
+        - YES_NO: otázky ano/ne (odpovedi bude automaticky generováno)
+        - RANGE: otázky s číselnou odpovědí (minHodnota, maxHodnota, spravnaHodnota)
+        
+        Prompt: ${input.prompt}`,
         config: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -151,6 +180,10 @@ export const questionRoutes = router({
                     otazka: {
                       type: Type.STRING,
                     },
+                    typ: {
+                      type: Type.STRING,
+                      enum: ["MULTIPLE_CHOICE", "YES_NO", "RANGE"],
+                    },
                     odpovedi: {
                       type: Type.ARRAY,
                       items: {
@@ -165,9 +198,29 @@ export const questionRoutes = router({
                         },
                         propertyOrdering: ["spravne", "odpoved"],
                       },
+                      nullable: true,
+                    },
+                    minHodnota: {
+                      type: Type.NUMBER,
+                      nullable: true,
+                    },
+                    maxHodnota: {
+                      type: Type.NUMBER,
+                      nullable: true,
+                    },
+                    spravnaHodnota: {
+                      type: Type.NUMBER,
+                      nullable: true,
                     },
                   },
-                  propertyOrdering: ["otazka", "odpovedi"],
+                  propertyOrdering: [
+                    "otazka",
+                    "typ",
+                    "odpovedi",
+                    "minHodnota",
+                    "maxHodnota",
+                    "spravnaHodnota",
+                  ],
                 },
               },
             },
@@ -189,19 +242,68 @@ export const questionRoutes = router({
           name: parsedResponse.jmeno,
           description: "",
           questions: {
-            create: parsedResponse.otazky.map((otazka, index) => ({
-              id: nanoid(),
-              text: otazka.otazka,
-              order: index + 1,
-              imageUrl: null,
-              options: {
-                create: otazka.odpovedi.map((odpoved) => ({
-                  id: nanoid(),
-                  text: odpoved.odpoved,
-                  isCorrect: odpoved.spravne,
-                })),
-              },
-            })),
+            create: parsedResponse.otazky.map((otazka, index) => {
+              const baseQuestion = {
+                id: nanoid(),
+                text: otazka.otazka,
+                order: index + 1,
+                imageUrl: null,
+                type: otazka.typ,
+              };
+
+              if (otazka.typ === "RANGE") {
+                return {
+                  ...baseQuestion,
+                  minValue: otazka.minHodnota ?? 0,
+                  maxValue: otazka.maxHodnota ?? 100,
+                  correctValue: otazka.spravnaHodnota ?? 50,
+                };
+              } else if (otazka.typ === "YES_NO") {
+                // Auto-generate yes/no options
+                // Check if there are odpovedi and find the correct answer
+                let correctAnswer = true; // default to Yes
+                if (otazka.odpovedi && otazka.odpovedi.length > 0) {
+                  const correctOpt = otazka.odpovedi.find((o) => o.spravne);
+                  if (correctOpt) {
+                    const answerText = correctOpt.odpoved.toLowerCase();
+                    correctAnswer =
+                      answerText.includes("ano") || answerText.includes("yes");
+                  }
+                }
+                return {
+                  ...baseQuestion,
+                  options: {
+                    create: [
+                      {
+                        id: nanoid(),
+                        text: "Ano",
+                        isCorrect: correctAnswer,
+                      },
+                      {
+                        id: nanoid(),
+                        text: "Ne",
+                        isCorrect: !correctAnswer,
+                      },
+                    ],
+                  },
+                };
+              } else {
+                // MULTIPLE_CHOICE
+                return {
+                  ...baseQuestion,
+                  options: {
+                    create: (otazka.odpovedi && otazka.odpovedi.length > 0
+                      ? otazka.odpovedi
+                      : []
+                    ).map((odpoved) => ({
+                      id: nanoid(),
+                      text: odpoved.odpoved,
+                      isCorrect: odpoved.spravne,
+                    })),
+                  },
+                };
+              }
+            }),
           },
         },
         include: {

@@ -58,7 +58,14 @@ export default function QuizDetailPage() {
     text: string;
     order: number;
     imageUrl: string | null;
+    type: "MULTIPLE_CHOICE" | "YES_NO" | "RANGE";
+    minValue: number | null;
+    maxValue: number | null;
+    correctValue: number | null;
   } | null>(null);
+  const [newQuestionType, setNewQuestionType] = useState<
+    "MULTIPLE_CHOICE" | "YES_NO" | "RANGE"
+  >("MULTIPLE_CHOICE");
   const [editingOption, setEditingOption] = useState<{
     id: string;
     text: string;
@@ -96,17 +103,34 @@ export default function QuizDetailPage() {
     const order = parseInt(formData.get("order") as string);
     const imageUrlInput = (formData.get("imageUrl") as string | null)?.trim();
     const imageUrl = imageUrlInput ? imageUrlInput : null;
+    const type = newQuestionType;
+
+    let minValue: number | null = null;
+    let maxValue: number | null = null;
+    let correctValue: number | null = null;
+
+    if (type === "RANGE") {
+      minValue = parseInt(formData.get("minValue") as string);
+      maxValue = parseInt(formData.get("maxValue") as string);
+      correctValue = parseInt(formData.get("correctValue") as string);
+    }
+
     try {
       await createQuestionMutation.mutateAsync({
         quizId,
         text,
         order,
         imageUrl,
+        type,
+        minValue,
+        maxValue,
+        correctValue,
       });
       queryClient.invalidateQueries({
         queryKey: trpc.question.getQuestions.queryKey({ quizId }),
       });
       setShowCreateQuestion(false);
+      setNewQuestionType("MULTIPLE_CHOICE");
     } catch (err) {
       console.error("Create question error:", err);
     }
@@ -120,12 +144,28 @@ export default function QuizDetailPage() {
     const order = parseInt(formData.get("order") as string);
     const imageUrlInput = (formData.get("imageUrl") as string | null)?.trim();
     const imageUrl = imageUrlInput ? imageUrlInput : null;
+    const type = editingQuestion.type;
+
+    let minValue: number | null = null;
+    let maxValue: number | null = null;
+    let correctValue: number | null = null;
+
+    if (type === "RANGE") {
+      minValue = parseInt(formData.get("minValue") as string);
+      maxValue = parseInt(formData.get("maxValue") as string);
+      correctValue = parseInt(formData.get("correctValue") as string);
+    }
+
     try {
       await updateQuestionMutation.mutateAsync({
         id: editingQuestion.id,
         text,
         order,
         imageUrl,
+        type,
+        minValue,
+        maxValue,
+        correctValue,
       });
       queryClient.invalidateQueries({
         queryKey: trpc.question.getQuestions.queryKey({ quizId }),
@@ -259,6 +299,28 @@ export default function QuizDetailPage() {
             </DialogHeader>
             <form onSubmit={handleCreateQuestion} className="space-y-4">
               <div className="space-y-2">
+                <Label htmlFor="question-type">Question Type</Label>
+                <Select
+                  value={newQuestionType}
+                  onValueChange={(value) =>
+                    setNewQuestionType(
+                      value as "MULTIPLE_CHOICE" | "YES_NO" | "RANGE"
+                    )
+                  }
+                >
+                  <SelectTrigger id="question-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="MULTIPLE_CHOICE">
+                      Multiple Choice
+                    </SelectItem>
+                    <SelectItem value="YES_NO">Yes/No</SelectItem>
+                    <SelectItem value="RANGE">Range (Number)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="question-text">Question Text</Label>
                 <Textarea id="question-text" name="text" required />
               </div>
@@ -272,6 +334,40 @@ export default function QuizDetailPage() {
                   required
                 />
               </div>
+              {newQuestionType === "RANGE" && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="question-min">Minimum Value</Label>
+                    <Input
+                      id="question-min"
+                      name="minValue"
+                      type="number"
+                      required
+                      defaultValue="0"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="question-max">Maximum Value</Label>
+                    <Input
+                      id="question-max"
+                      name="maxValue"
+                      type="number"
+                      required
+                      defaultValue="100"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="question-correct">Correct Value</Label>
+                    <Input
+                      id="question-correct"
+                      name="correctValue"
+                      type="number"
+                      required
+                      defaultValue="50"
+                    />
+                  </div>
+                </>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="question-image">Image URL (optional)</Label>
                 <Input
@@ -284,11 +380,21 @@ export default function QuizDetailPage() {
                   This image appears on the TV view only.
                 </p>
               </div>
+              {newQuestionType === "YES_NO" && (
+                <p className="text-sm text-muted-foreground">
+                  Yes/No questions will automatically have "Ano" and "Ne" options
+                  created. Add options after creating the question to set which is
+                  correct.
+                </p>
+              )}
               <div className="flex justify-end gap-2">
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setShowCreateQuestion(false)}
+                  onClick={() => {
+                    setShowCreateQuestion(false);
+                    setNewQuestionType("MULTIPLE_CHOICE");
+                  }}
                 >
                   Cancel
                 </Button>
@@ -321,6 +427,21 @@ export default function QuizDetailPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <Badge variant="outline">Order: {question.order}</Badge>
+                      <Badge
+                        variant={
+                          question.type === "RANGE"
+                            ? "default"
+                            : question.type === "YES_NO"
+                              ? "secondary"
+                              : "outline"
+                        }
+                      >
+                        {question.type === "MULTIPLE_CHOICE"
+                          ? "Multiple Choice"
+                          : question.type === "YES_NO"
+                            ? "Yes/No"
+                            : "Range"}
+                      </Badge>
                     </div>
                     <CardTitle className="text-lg">{question.text}</CardTitle>
                   </div>
@@ -334,6 +455,13 @@ export default function QuizDetailPage() {
                             text: question.text,
                             order: question.order,
                             imageUrl: question.imageUrl ?? null,
+                            type: question.type as
+                              | "MULTIPLE_CHOICE"
+                              | "YES_NO"
+                              | "RANGE",
+                            minValue: question.minValue ?? null,
+                            maxValue: question.maxValue ?? null,
+                            correctValue: question.correctValue ?? null,
                           });
                         } else {
                           setEditingQuestion(null);
@@ -368,6 +496,26 @@ export default function QuizDetailPage() {
                           className="space-y-4"
                         >
                           <div className="space-y-2">
+                            <Label htmlFor="edit-question-type">
+                              Question Type
+                            </Label>
+                            <Input
+                              id="edit-question-type"
+                              value={
+                                editingQuestion?.type === "MULTIPLE_CHOICE"
+                                  ? "Multiple Choice"
+                                  : editingQuestion?.type === "YES_NO"
+                                    ? "Yes/No"
+                                    : "Range"
+                              }
+                              disabled
+                              className="bg-muted"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Question type cannot be changed after creation
+                            </p>
+                          </div>
+                          <div className="space-y-2">
                             <Label htmlFor="edit-question-text">
                               Question Text
                             </Label>
@@ -393,6 +541,54 @@ export default function QuizDetailPage() {
                               required
                             />
                           </div>
+                          {editingQuestion?.type === "RANGE" && (
+                            <>
+                              <div className="space-y-2">
+                                <Label htmlFor="edit-question-min">
+                                  Minimum Value
+                                </Label>
+                                <Input
+                                  id="edit-question-min"
+                                  name="minValue"
+                                  type="number"
+                                  defaultValue={
+                                    editingQuestion?.minValue ?? question.minValue ?? 0
+                                  }
+                                  required
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="edit-question-max">
+                                  Maximum Value
+                                </Label>
+                                <Input
+                                  id="edit-question-max"
+                                  name="maxValue"
+                                  type="number"
+                                  defaultValue={
+                                    editingQuestion?.maxValue ?? question.maxValue ?? 100
+                                  }
+                                  required
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="edit-question-correct">
+                                  Correct Value
+                                </Label>
+                                <Input
+                                  id="edit-question-correct"
+                                  name="correctValue"
+                                  type="number"
+                                  defaultValue={
+                                    editingQuestion?.correctValue ??
+                                    question.correctValue ??
+                                    50
+                                  }
+                                  required
+                                />
+                              </div>
+                            </>
+                          )}
                           <div className="space-y-2">
                             <Label htmlFor="edit-question-image">
                               Image URL (optional)
@@ -476,8 +672,27 @@ export default function QuizDetailPage() {
                       </div>
                     </div>
                   )}
-                  <div className="flex justify-between items-center">
-                    <h4 className="font-medium">Options</h4>
+                  {question.type === "RANGE" && (
+                    <div className="rounded-lg border bg-blue-50 dark:bg-blue-950/20 p-3">
+                      <Label className="text-xs text-muted-foreground">
+                        Range Question Settings
+                      </Label>
+                      <div className="mt-2 space-y-1 text-sm">
+                        <div>
+                          <span className="font-medium">Range:</span>{" "}
+                          {question.minValue} - {question.maxValue}
+                        </div>
+                        <div>
+                          <span className="font-medium">Correct Answer:</span>{" "}
+                          {question.correctValue}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {question.type !== "RANGE" && (
+                    <>
+                      <div className="flex justify-between items-center">
+                        <h4 className="font-medium">Options</h4>
                     <Dialog
                       open={showCreateOption === question.id}
                       onOpenChange={(open) =>
@@ -692,6 +907,8 @@ export default function QuizDetailPage() {
                         </div>
                       ))}
                     </div>
+                  )}
+                    </>
                   )}
                 </div>
               </CardContent>

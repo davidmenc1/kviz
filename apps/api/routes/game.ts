@@ -12,17 +12,22 @@ export const eventData = z.discriminatedUnion("type", [
     question: z.string(),
     questionId: z.string(),
     imageUrl: z.string().url().optional().nullable(),
+    questionType: z.enum(["MULTIPLE_CHOICE", "YES_NO", "RANGE"]),
     options: z.array(
       z.object({
         id: z.string(),
         text: z.string(),
       })
     ),
+    minValue: z.number().optional().nullable(),
+    maxValue: z.number().optional().nullable(),
   }),
   z.object({
     type: z.literal("correct_option"),
-    optionId: z.string(),
+    optionId: z.string().optional().nullable(),
+    correctValue: z.number().optional().nullable(),
     questionId: z.string(),
+    questionType: z.enum(["MULTIPLE_CHOICE", "YES_NO", "RANGE"]),
     teams: z.array(
       z.object({
         id: z.string(),
@@ -102,6 +107,10 @@ export const gameRoutes = router({
             text: question.text,
             order: question.order,
             imageUrl: question.imageUrl,
+            type: question.type,
+            minValue: question.minValue,
+            maxValue: question.maxValue,
+            correctValue: question.correctValue,
             options: question.options.map((option) => ({
               id: option.id,
               text: option.text,
@@ -159,6 +168,10 @@ export const gameRoutes = router({
             text: question.text,
             order: question.order,
             imageUrl: question.imageUrl,
+            type: question.type,
+            minValue: question.minValue,
+            maxValue: question.maxValue,
+            correctValue: question.correctValue,
             options: question.options.map((option) => ({
               id: option.id,
               text: option.text,
@@ -273,7 +286,8 @@ export const gameRoutes = router({
         gameId: z.string(),
         playerId: z.string(),
         questionId: z.string(),
-        optionId: z.string(),
+        optionId: z.string().optional(),
+        rangeValue: z.number().optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -308,7 +322,9 @@ export const gameRoutes = router({
         game.playerAnswers.set(input.questionId, new Map());
       }
       const questionAnswers = game.playerAnswers.get(input.questionId)!;
-      questionAnswers.set(input.playerId, input.optionId);
+      // Store either optionId or rangeValue
+      const answer = input.optionId ?? input.rangeValue?.toString() ?? "";
+      questionAnswers.set(input.playerId, answer);
 
       return { success: true };
     }),
@@ -399,10 +415,13 @@ export const gameRoutes = router({
             question: question.text,
             questionId: question.id,
             imageUrl: question.imageUrl,
+            questionType: question.type,
             options: question.options.map((option) => ({
               id: option.id,
               text: option.text,
             })),
+            minValue: question.minValue,
+            maxValue: question.maxValue,
           } satisfies EventData;
           game.ee.emit("data", data);
           break;
@@ -412,26 +431,66 @@ export const gameRoutes = router({
             where: { quizId: game.quizId, order: game.questionNumber },
             include: { options: { where: { isCorrect: true } } },
           });
-          if (!currentQuestion?.options[0]) {
+          if (!currentQuestion) {
             throw new TRPCError({
               code: "NOT_FOUND",
               message: "Question not found",
             });
           }
 
-          const correctOptionId = currentQuestion.options[0].id;
           const questionId = currentQuestion.id;
+          const questionType = currentQuestion.type;
 
           // Get player answers for this question
           const questionAnswers =
             game.playerAnswers.get(questionId) || new Map();
 
-          // Calculate scores for each player
-          for (const team of game.teams) {
-            for (const player of team.players) {
-              const playerAnswer = questionAnswers.get(player.id);
-              if (playerAnswer === correctOptionId) {
-                player.score += 1;
+          let correctOptionId: string | null = null;
+          let correctValue: number | null = null;
+
+          if (questionType === "RANGE") {
+            correctValue = currentQuestion.correctValue;
+            // Calculate scores for range questions based on proximity
+            for (const team of game.teams) {
+              for (const player of team.players) {
+                const playerAnswer = questionAnswers.get(player.id);
+                if (playerAnswer && correctValue !== null) {
+                  const playerValue = parseInt(playerAnswer);
+                  if (!isNaN(playerValue)) {
+                    // Calculate score based on how close they are
+                    // Within 5% of range: full point, then decreasing
+                    const range =
+                      (currentQuestion.maxValue ?? 100) -
+                      (currentQuestion.minValue ?? 0);
+                    const tolerance = range * 0.05; // 5% tolerance
+                    const difference = Math.abs(playerValue - correctValue);
+
+                    if (difference <= tolerance) {
+                      player.score += 1; // Full point
+                    } else if (difference <= tolerance * 3) {
+                      player.score += 0.5; // Half point
+                    }
+                  }
+                }
+              }
+            }
+          } else {
+            // MULTIPLE_CHOICE or YES_NO
+            if (!currentQuestion.options[0]) {
+              throw new TRPCError({
+                code: "NOT_FOUND",
+                message: "Question has no correct answer",
+              });
+            }
+            correctOptionId = currentQuestion.options[0].id;
+
+            // Calculate scores for option-based questions
+            for (const team of game.teams) {
+              for (const player of team.players) {
+                const playerAnswer = questionAnswers.get(player.id);
+                if (playerAnswer === correctOptionId) {
+                  player.score += 1;
+                }
               }
             }
           }
@@ -451,7 +510,9 @@ export const gameRoutes = router({
           const correctOptionData = {
             type: "correct_option",
             optionId: correctOptionId,
+            correctValue: correctValue,
             questionId: questionId,
+            questionType: questionType,
             teams: teamsWithScores,
           } satisfies EventData;
           game.ee.emit("data", correctOptionData);

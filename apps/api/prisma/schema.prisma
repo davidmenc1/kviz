@@ -17,13 +17,23 @@ model Quiz {
 }
 
 model Question {
-  id       String   @id
-  quizId   String
-  order    Int
-  quiz     Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  text     String
-  imageUrl String?
-  options  Option[]
+  id           String       @id
+  quizId       String
+  order        Int
+  quiz         Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  text         String
+  imageUrl     String?
+  type         QuestionType @default(MULTIPLE_CHOICE)
+  minValue     Int?
+  maxValue     Int?
+  correctValue Int?
+  options      Option[]
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  YES_NO
+  RANGE
 }
 
 model Option {
